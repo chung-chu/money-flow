@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Details of a financial transaction",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Type of transaction" },
+        "categoryId": { "type": "string", "description": "Reference to Category ID" },
+        "date": { "type": "string", "format": "date", "description": "Date of transaction" },
+        "time": { "type": "string", "description": "Time of transaction" },
+        "note": { "type": "string", "description": "Optional notes" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          },
+          "description": "GPS coordinates"
+        },
+        "placeName": { "type": "string", "description": "Name of the location" },
+        "userId": { "type": "string", "description": "Owner of the transaction" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "type", "categoryId", "date", "userId"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Transaction category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "icon": { "type": "string", "description": "Lucide icon name" },
+        "color": { "type": "string", "description": "Hex color code" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "type", "userId"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Budget limit for a category in a month",
+      "type": "object",
+      "properties": {
+        "categoryId": { "type": "string" },
+        "limitAmount": { "type": "number" },
+        "month": { "type": "string", "description": "Format YYYY-MM" },
+        "userId": { "type": "string" }
+      },
+      "required": ["categoryId", "limitAmount", "month", "userId"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Financial savings goal",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "deadline": { "type": "string", "format": "date" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "targetAmount", "userId"]
+    }
+  },
+  "firestore": {
+    "transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User transactions"
+    },
+    "categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Transaction categories"
+    },
+    "budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "User budgets"
+    },
+    "goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User savings goals"
+    }
+  }
+}
