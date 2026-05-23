@@ -1,0 +1,6 @@
+{
+  "name": "MoneyFlow",
+  "description": "MoneyFlow is a sophisticated Personal Finance & Expense Intelligence System. It features AI-powered spending analysis using Gemini, real-time budgeting, savings goals tracking, and geospatial spending visualization. Designed with a modern, high-performance dashboard for complete economic control.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["Personal Finance", "AI Insights", "Expense Tracking"]
+}
