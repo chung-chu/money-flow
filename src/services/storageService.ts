@@ -1,5 +1,6 @@
 import { Transaction, Category, Budget, Goal, TransactionType } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { safeStringify } from '../lib/utils';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: 'moneyflow_transactions',
@@ -44,7 +45,7 @@ export class StorageService {
   }
 
   private static set<T>(key: string, data: T[]): void {
-    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(key, safeStringify(data));
   }
 
   // --- Background Sync with Supabase ---

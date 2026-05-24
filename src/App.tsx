@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { StorageService } from './services/storageService';
 import { Transaction, Category } from './types';
+import { safeStringify } from './lib/utils';
 import Dashboard from './components/Dashboard';
 import TransactionList from './components/TransactionList';
 import TransactionForm from './components/TransactionForm';
@@ -77,7 +78,7 @@ export default function App() {
   };
 
   const handleLogin = (user: { id: string; name: string; phone: string; avatar: string }) => {
-    localStorage.setItem('moneyflow_current_user', JSON.stringify(user));
+    localStorage.setItem('moneyflow_current_user', safeStringify(user));
     setCurrentUser(user);
     setActiveTab('dashboard');
   };
@@ -85,14 +86,14 @@ export default function App() {
   const handleUpdateProfile = (updated: { name: string; avatar: string }) => {
     if (!currentUser) return;
     const nextUser = { ...currentUser, name: updated.name, avatar: updated.avatar };
-    localStorage.setItem('moneyflow_current_user', JSON.stringify(nextUser));
+    localStorage.setItem('moneyflow_current_user', safeStringify(nextUser));
     
     // Update raw users directory as well
     const usersList = JSON.parse(localStorage.getItem('moneyflow_users') || '[]');
     const index = usersList.findIndex((u: any) => u.phone === currentUser.phone);
     if (index > -1) {
       usersList[index] = { ...usersList[index], name: updated.name, avatar: updated.avatar };
-      localStorage.setItem('moneyflow_users', JSON.stringify(usersList));
+      localStorage.setItem('moneyflow_users', safeStringify(usersList));
     }
     
     setCurrentUser(nextUser);
@@ -165,7 +166,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area (With flexible margins and bottom spacing for mobile tab bar) */}
-      <main className={`transition-all duration-200 ${isSidebarOpen ? 'lg:ml-[220px]' : 'lg:ml-20'} ml-0 min-h-screen flex flex-col pb-20 lg:pb-0`}>
+      <main className={`transition-all duration-200 ${isSidebarOpen ? 'lg:ml-[220px]' : 'lg:ml-20'} ml-0 min-h-screen flex flex-col pb-[100px] lg:pb-0`}>
         {/* Header (Stylized with adaptive padding and hidden extra elements on mobile) */}
         <header className="h-16 border-b border-[#1E293B] flex items-center justify-between px-4 sm:px-8 bg-[#0B0E14]/80 backdrop-blur sticky top-0 z-40">
           <div className="flex items-center gap-3">
@@ -253,11 +254,11 @@ export default function App() {
       </main>
 
       {/* Mobile/Tablet Bottom Navigation Bar (Ergonomic Touch Targets for Easy Thumb Control) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#12161F]/95 backdrop-blur-md border-t border-[#1E293B] z-40 flex items-center justify-around px-2 pb-safe shadow-2xl">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[84px] bg-[#12161F]/95 backdrop-blur-md border-t border-[#1E293B] z-40 flex items-start justify-around px-2 pt-2.5 pb-[28.5px] pb-safe shadow-[0_-10px_35px_-12px_rgba(0,0,0,0.5)] select-none">
         {/* Trang chủ */}
         <button 
           onClick={() => { setActiveTab('dashboard'); setShowMoreMenuMobile(false); }}
-          className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-all ${activeTab === 'dashboard' ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
+          className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all active:scale-90 duration-100 ease-out ${activeTab === 'dashboard' ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
         >
           <LayoutDashboard className="w-5 h-5" />
           <span className="text-[10px] font-bold mt-1 tracking-tight">Tổng quan</span>
@@ -266,7 +267,7 @@ export default function App() {
         {/* Giao dịch */}
         <button 
           onClick={() => { setActiveTab('transactions'); setShowMoreMenuMobile(false); }}
-          className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-all ${activeTab === 'transactions' ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
+          className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all active:scale-90 duration-100 ease-out ${activeTab === 'transactions' ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
         >
           <History className="w-5 h-5" />
           <span className="text-[10px] font-bold mt-1 tracking-tight">Giao dịch</span>
@@ -276,7 +277,7 @@ export default function App() {
         <div className="flex-1 flex justify-center sticky select-none">
           <button 
             onClick={() => setShowAddModal(true)}
-            className="w-12 h-12 bg-[#6366F1] active:bg-[#4F46E5] text-white rounded-full flex items-center justify-center shadow-lg shadow-[#6366F1]/30 border-4 border-[#0B0E14] -translate-y-4 transition-transform active:scale-90"
+            className="w-12 h-12 bg-[#6366F1] active:bg-[#4F46E5] text-white rounded-full flex items-center justify-center shadow-lg shadow-[#6366F1]/30 border-4 border-[#0B0E14] -translate-y-[22px] transition-all duration-200 active:scale-85"
             style={{ touchAction: 'manipulation' }}
           >
             <Plus className="w-6 h-6 stroke-[3]" />
@@ -286,7 +287,7 @@ export default function App() {
         {/* Phân tích AI */}
         <button 
           onClick={() => { setActiveTab('analytics'); setShowMoreMenuMobile(false); }}
-          className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-all ${activeTab === 'analytics' ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
+          className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all active:scale-90 duration-100 ease-out ${activeTab === 'analytics' ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
         >
           <BrainCircuit className="w-5 h-5" />
           <span className="text-[10px] font-bold mt-1 tracking-tight">AI Report</span>
@@ -295,7 +296,7 @@ export default function App() {
         {/* Mở rộng (More) triggers ergonomic slide-up drawer */}
         <button 
           onClick={() => setShowMoreMenuMobile(!showMoreMenuMobile)}
-          className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-all ${showMoreMenuMobile || ['categories', 'budgets', 'goals', 'map'].includes(activeTab) ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
+          className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all active:scale-90 duration-100 ease-out ${showMoreMenuMobile || ['categories', 'budgets', 'goals', 'map'].includes(activeTab) ? 'text-[#6366F1]' : 'text-[#8E9CB0]'}`}
         >
           <MoreVertical className="w-5 h-5" />
           <span className="text-[10px] font-bold mt-1 tracking-tight">Tiện ích</span>
@@ -319,8 +320,8 @@ export default function App() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 24, stiffness: 210 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#12161F] border-t border-[#1E293B] rounded-t-3xl z-50 px-6 pt-5 pb-10 shadow-3xl space-y-6"
+              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#12161F] border-t border-[#1E293B] rounded-t-3xl z-50 px-6 pt-5 pb-12 pb-safe shadow-[0_-15px_40px_rgba(0,0,0,0.6)] space-y-6 select-none"
             >
               {/* Top Notch for standard iOS indicator */}
               <div className="w-12 h-1 bg-[#1E293B] rounded-full mx-auto cursor-pointer" onClick={() => setShowMoreMenuMobile(false)} />

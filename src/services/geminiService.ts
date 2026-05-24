@@ -1,4 +1,5 @@
 import { Transaction, Category } from "../types";
+import { safeStringify } from "../lib/utils";
 
 export interface ChatMessage {
   role: 'user' | 'model';
@@ -11,7 +12,7 @@ export class GeminiService {
       const res = await fetch("/api/analyze-spending", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactions, categories }),
+        body: safeStringify({ transactions, categories }),
       });
       if (!res.ok) throw new Error("Phân tích dữ liệu lỗi từ server");
       return await res.json();
@@ -26,7 +27,7 @@ export class GeminiService {
       const res = await fetch("/api/parse-voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, categories }),
+        body: safeStringify({ text, categories }),
       });
       if (!res.ok) throw new Error("Xử lý giọng nói lỗi từ server");
       return await res.json();
@@ -41,7 +42,7 @@ export class GeminiService {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, history, transactions, categories }),
+        body: safeStringify({ message, history, transactions, categories }),
       });
       if (!res.ok) throw new Error("Kết nối máy chủ trợ lý lỗi");
       const data = await res.json();

@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { safeStringify } from '../lib/utils';
 
 interface AuthPageProps {
   onLogin: (user: { id: string; name: string; phone: string; avatar: string }) => void;
@@ -133,23 +134,11 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
 
     const users = JSON.parse(localStorage.getItem('moneyflow_users') || '[]');
     users.push(newUser);
-    localStorage.setItem('moneyflow_users', JSON.stringify(users));
+    localStorage.setItem('moneyflow_users', safeStringify(users));
 
     // Success
     onLogin(newUser);
     toast.success(`Đăng ký thành công! Chào mừng ${newUser.name} đến với MoneyFlow OS! 🎉`);
-  };
-
-  const handleDemoMode = () => {
-    const demoUser = {
-      id: 'demo',
-      phone: '0900000000',
-      password: 'demo',
-      name: 'Khách hàng Demo',
-      avatar: '🦊'
-    };
-    onLogin(demoUser);
-    toast.success('Đã khởi động chế độ xem thử Demo!');
   };
 
   return (
@@ -320,22 +309,15 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
           </form>
         )}
 
-        <div className="flex items-center justify-between mt-8 pt-4 border-t border-[#1E293B]/60 text-xs font-sans">
+        <div className="flex items-center justify-center mt-8 pt-4 border-t border-[#1E293B]/60 text-xs font-sans">
           <button
             onClick={() => {
               setIsRegister(!isRegister);
               setStep('credentials');
             }}
-            className="text-indigo-400 hover:text-indigo-300 font-bold tracking-tight"
+            className="text-indigo-400 hover:text-indigo-300 font-bold tracking-tight text-center w-full py-1"
           >
             {isRegister ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
-          </button>
-
-          <button
-            onClick={handleDemoMode}
-            className="text-emerald-400 hover:text-emerald-300 font-extrabold tracking-widest uppercase text-[9px] flex items-center gap-1.5 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20"
-          >
-            Chạy thử Demo 🦊
           </button>
         </div>
 

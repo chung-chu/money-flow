@@ -91,23 +91,34 @@ export default function MapAnalysis({ transactions, categories }: MapAnalysisPro
     return [10.762622, 106.660172]; // Ho Chi Minh City
   }, [filteredMarkers]);
 
-  // Dynamic Colored DivIcons for Leaflet (Avoid default icon loading problems)
-  const createMarkerIcon = (type: TransactionType) => {
-    const isExpense = type === TransactionType.EXPENSE;
-    const colorClass = isExpense ? 'bg-[#EF4444]' : 'bg-[#10B981]';
-    const textSymbol = isExpense ? '💸' : '💰';
+  // Dynamic Colored DivIcons for Leaflet (Avoid default icon loading problems & circular re-render loops)
+  const expenseIcon = useMemo(() => {
     return L.divIcon({
       className: 'custom-leaflet-marker',
       html: `
-        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-[#1E293B] shadow-2xl ${colorClass} text-white font-extrabold text-[13px] animate-fade-in transition-all hover:scale-110">
-          ${textSymbol}
+        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-[#1E293B] shadow-2xl bg-[#EF4444] text-white font-extrabold text-[13px] animate-fade-in transition-all hover:scale-110">
+          💸
         </div>
       `,
       iconSize: [32, 32],
       iconAnchor: [16, 16],
       popupAnchor: [0, -16]
     });
-  };
+  }, []);
+
+  const incomeIcon = useMemo(() => {
+    return L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `
+        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-[#1E293B] shadow-2xl bg-[#10B981] text-white font-extrabold text-[13px] animate-fade-in transition-all hover:scale-110">
+          💰
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -16]
+    });
+  }, []);
 
   // --- 1. GEOSPATIAL STATISTICS (Không gian) ---
   const geospatialSummary = useMemo(() => {
@@ -484,7 +495,7 @@ export default function MapAnalysis({ transactions, categories }: MapAnalysisPro
                       <Marker 
                         position={[tx.location!.lat, tx.location!.lng]}
                         // @ts-ignore
-                        icon={createMarkerIcon(tx.type)}
+                        icon={isExpense ? expenseIcon : incomeIcon}
                       >
                         <Popup>
                           <div className="p-2.5 text-zinc-900 leading-tight space-y-1 w-[180px]">
