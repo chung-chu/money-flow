@@ -408,14 +408,14 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
                   .filter(c => c.type === type && !c.parentId)
                   .map(parent => {
                     const parentOption = (
-                      <SelectItem key={parent.id} value={parent.id} className="font-bold text-[#6366f1] focus:bg-[#6366f1]/20">
+                      <SelectItem key={parent.id} value={parent.id} className="font-bold text-[#818cf8] hover:text-white focus:text-white focus:bg-[#6366f1]">
                         {parent.name}
                       </SelectItem>
                     );
                     const subOptions = categories
                       .filter(c => c.parentId === parent.id)
                       .map(sub => (
-                        <SelectItem key={sub.id} value={sub.id} className="pl-6 text-zinc-300 focus:bg-zinc-850">
+                        <SelectItem key={sub.id} value={sub.id} className="pl-6 text-zinc-300 hover:text-white focus:text-white focus:bg-zinc-800">
                           {sub.name}
                         </SelectItem>
                       ));
