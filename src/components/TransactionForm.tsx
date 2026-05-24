@@ -19,8 +19,7 @@ import {
 import { TransactionType, Category } from '../types';
 import { StorageService } from '../services/storageService';
 import { toast } from 'sonner';
-import { Mic, Sparkles } from 'lucide-react';
-import { GeminiService } from '../services/geminiService';
+import { useLanguage } from '../context/LanguageContext';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -30,13 +29,12 @@ interface TransactionFormProps {
 }
 
 export default function TransactionForm({ isOpen, onClose, onSuccess, categories }: TransactionFormProps) {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
   const [categoryId, setCategoryId] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isProcessingAI, setIsProcessingAI] = useState(false);
-  const [aiInput, setAiInput] = useState('');
 
   // Location and GPS states
   const [placeName, setPlaceName] = useState('');
@@ -44,15 +42,46 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
   const [lng, setLng] = useState('');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isLocAttached, setIsLocAttached] = useState(false);
+  const [isSearchingPlace, setIsSearchingPlace] = useState(false);
+
+  const searchCoordinatesFromPlace = async () => {
+    if (!placeName.trim()) {
+      toast.error('Vui lòng nhập tên địa điểm/cửa hàng trước khi tra cứu.');
+      return;
+    }
+    setIsSearchingPlace(true);
+    toast.info(`Đang truy vấn toạ độ địa lý tự động cho "${placeName}" từ OpenStreetMap...`);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}&limit=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const first = data[0];
+          setLat(first.lat);
+          setLng(first.lon);
+          setIsLocAttached(true);
+          toast.success(`Tìm thấy địa kỳ! Toạ độ: [${parseFloat(first.lat).toFixed(4)}, ${parseFloat(first.lon).toFixed(4)}]`);
+        } else {
+          toast.error('Nguồn dữ liệu bản đồ không trả về tọa độ phù hợp. Thử viết rõ hơn.');
+        }
+      } else {
+        toast.error('Không kết nối được API bản đồ.');
+      }
+    } catch (e) {
+      toast.error('Lỗi khi truy xuất dữ liệu định vị.');
+    } finally {
+      setIsSearchingPlace(false);
+    }
+  };
 
   const requestAndFetchLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Thiết bị hoặc trình duyệt của bạn không hỗ trợ định vị.');
+      toast.error('Thiết bị hoặc trình duyệt không hỗ trợ Geolocation API.');
       return;
     }
 
     setIsGettingLocation(true);
-    toast.info('Đang yêu cầu quyền truy cập vị trí và định vị GPS...');
+    toast.info('Đang yêu cầu trình duyệt cho phép định vị GPS...');
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -62,9 +91,9 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
         setLng(uLng.toString());
         setIsLocAttached(true);
         setIsGettingLocation(false);
-        toast.success(`Định vị thành công! [${uLat.toFixed(4)}, ${uLng.toFixed(4)}]`);
+        toast.success(`Định vị GPS thành công! [${uLat.toFixed(4)}, ${uLng.toFixed(4)}]`);
 
-        // Attempt a reverse geocode with openstreetmap nominatim API
+        // Free reverse geocode reverse using Nominatim API openstreetmap
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${uLat}&lon=${uLng}`);
           if (res.ok) {
@@ -86,13 +115,13 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
         setIsGettingLocation(false);
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            toast.error('Bạn đã từ chối quyền truy cập vị trí. Vui lòng cấp quyền trong cài đặt trình duyệt để tiếp tục sử dụng.');
+            toast.error('Bạn đã từ chối quyền truy cập vị trí. Vui lòng cấp quyền trong cài đặt trình duyệt.');
             break;
           case error.POSITION_UNAVAILABLE:
             toast.error('Thông tin vị trí định vị không khả dụng.');
             break;
           case error.TIMEOUT:
-            toast.error('Yêu cầu lấy vị trí hết thời gian chờ.');
+            toast.error('Yêu cầu định vị hết thời gian chờ.');
             break;
           default:
             toast.error('Không thể xác nhận vị trí GPS.');
@@ -105,7 +134,7 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !categoryId || !date) {
-      toast.error('Please fill in all required fields');
+      toast.error(t('form.fillRequired'));
       return;
     }
 
@@ -122,30 +151,10 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
       userId: 'demo'
     });
 
-    toast.success('Transaction added successfully');
+    toast.success(t('form.success'));
     reset();
     onSuccess();
     onClose();
-  };
-
-  const handleAIParse = async () => {
-    if (!aiInput) return;
-    setIsProcessingAI(true);
-    try {
-      const result = await GeminiService.parseVoiceInput(aiInput, categories);
-      if (result) {
-        setAmount(result.amount?.toString() || '');
-        setType(result.type || TransactionType.EXPENSE);
-        setCategoryId(result.categoryId || '');
-        setNote(result.note || '');
-        setDate(result.date || new Date().toISOString().split('T')[0]);
-        toast.success('AI parsed transaction successfully');
-      }
-    } catch (error) {
-      toast.error('AI failed to parse input');
-    } finally {
-      setIsProcessingAI(false);
-    }
   };
 
   const reset = () => {
@@ -153,7 +162,6 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
     setType(TransactionType.EXPENSE);
     setCategoryId('');
     setNote('');
-    setAiInput('');
     setPlaceName('');
     setLat('');
     setLng('');
@@ -163,77 +171,61 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-zinc-800 text-zinc-100 sm:max-w-[425px]">
+      <DialogContent className="bg-[#0c0f16] border border-[#1e293b] text-zinc-100 sm:max-w-[425px] rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold italic">Add Transaction</DialogTitle>
+          <DialogTitle className="text-xl font-bold italic text-slate-100">{t('form.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* AI Input Section */}
-          <div className="space-y-2">
-            <Label className="text-zinc-400 text-xs uppercase tracking-widest">AI Quick Add</Label>
-            <div className="relative">
-              <Input 
-                placeholder="Ex: '30k for lunch today'" 
-                value={aiInput}
-                onChange={(e) => setAiInput(e.target.value)}
-                className="bg-zinc-900 border-zinc-800 pr-24"
-              />
-              <Button 
-                onClick={handleAIParse}
-                disabled={isProcessingAI || !aiInput}
-                className="absolute right-1 top-1 h-8 bg-orange-600 hover:bg-orange-500 text-[10px] uppercase font-bold"
-              >
-                {isProcessingAI ? '...' : <><Sparkles className="w-3 h-3 mr-1" /> Magic</>}
-              </Button>
-            </div>
-          </div>
-
+        <div className="space-y-5 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-zinc-400 text-xs uppercase tracking-widest">Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as TransactionType)}>
+              <Label className="text-zinc-400 text-xs uppercase tracking-wider">{t('form.type')}</Label>
+              <Select value={type} onValueChange={(v) => {
+                setType(v as TransactionType);
+                setCategoryId(''); // Reset chosen cat since type flipped
+              }}>
                 <SelectTrigger className="bg-zinc-900 border-zinc-800">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
-                  <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
-                  <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
+                <SelectContent className="bg-[#12161f] border-[#1e293b] text-zinc-100">
+                  <SelectItem value={TransactionType.EXPENSE}>{t('form.expense')}</SelectItem>
+                  <SelectItem value={TransactionType.INCOME}>{t('form.income')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            
             <div className="space-y-2">
-              <Label className="text-zinc-400 text-xs uppercase tracking-widest">Amount</Label>
+              <Label className="text-zinc-400 text-xs uppercase tracking-wider">{t('form.amount')}</Label>
               <Input 
                 type="number" 
-                placeholder="0.00" 
+                placeholder="Ví dụ: 25000" 
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="bg-zinc-900 border-zinc-800"
+                className="bg-zinc-900 border-zinc-800 text-sm font-mono"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[#94A3B8] text-xs uppercase tracking-widest">Category (Danh mục)</Label>
+            <Label className="text-zinc-400 text-xs uppercase tracking-wider">{t('form.category')}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger className="bg-zinc-900 border-zinc-800">
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder={t('form.selectCategory')} />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+              <SelectContent className="bg-[#12161f] border-[#1e293b] text-zinc-100 max-h-[250px] overflow-y-auto">
                 {categories
                   .filter(c => c.type === type && !c.parentId)
                   .map(parent => {
                     const parentOption = (
-                      <SelectItem key={parent.id} value={parent.id} className="font-bold text-indigo-400 focus:bg-indigo-500/20">
-                        💼 {parent.name} (Tất cả)
+                      <SelectItem key={parent.id} value={parent.id} className="font-bold text-[#6366f1] focus:bg-[#6366f1]/20">
+                        {parent.name}
                       </SelectItem>
                     );
                     const subOptions = categories
                       .filter(c => c.parentId === parent.id)
                       .map(sub => (
-                        <SelectItem key={sub.id} value={sub.id} className="pl-6 text-zinc-300 focus:bg-zinc-800/80">
-                          ↳ {sub.name}
+                        <SelectItem key={sub.id} value={sub.id} className="pl-6 text-zinc-300 focus:bg-zinc-850">
+                          {sub.name}
                         </SelectItem>
                       ));
                     return [parentOption, ...subOptions];
@@ -245,31 +237,32 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-zinc-400 text-xs uppercase tracking-widest">Date</Label>
+              <Label className="text-zinc-400 text-xs uppercase tracking-wider">{t('form.date')}</Label>
               <Input 
                 type="date" 
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="bg-zinc-900 border-zinc-800 inverted-colors"
+                className="bg-zinc-900 border-zinc-800 text-xs"
                 style={{ colorScheme: 'dark' }}
               />
             </div>
+
             <div className="space-y-2">
-              <Label className="text-zinc-400 text-xs uppercase tracking-widest">Note (Ghi chú)</Label>
+              <Label className="text-zinc-400 text-xs uppercase tracking-wider">{t('form.note')}</Label>
               <Input 
-                placeholder="Ví dụ: Ăn trưa Highlands" 
+                placeholder={t('form.notePlaceholder')} 
                 value={note}
                 onChange={e => setNote(e.target.value)}
-                className="bg-zinc-900 border-zinc-800"
+                className="bg-zinc-900 border-zinc-800 text-sm"
               />
             </div>
           </div>
 
-          {/* Location details section */}
-          <div className="border-t border-zinc-900 pt-4 space-y-3">
+          {/* Location details section with reduced location icons as requested */}
+          <div className="border-t border-[#1e293b] pt-4 space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-zinc-400 text-xs uppercase tracking-widest flex items-center gap-1">
-                📍 Vị trí giao dịch
+              <Label className="text-zinc-400 text-xs uppercase tracking-wider">
+                {t('form.location')}
               </Label>
               <Button
                 type="button"
@@ -277,27 +270,37 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
                 size="sm"
                 onClick={requestAndFetchLocation}
                 disabled={isGettingLocation}
-                className={`h-7 px-2.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                className={`h-7 px-3 text-[10px] font-bold uppercase tracking-wider transition-all ${
                   isLocAttached 
                     ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10' 
                     : 'border-zinc-800 text-zinc-300 hover:bg-zinc-800'
                 }`}
               >
-                {isGettingLocation ? 'Đang định vị...' : isLocAttached ? '✓ Đã gắn GPS' : '📍 Đính kèm vị trí'}
+                {isGettingLocation ? t('form.gettingLocation') : isLocAttached ? 'Đã định vị GPS' : t('form.getLocation')}
               </Button>
             </div>
 
             <div className="space-y-2">
-              <Input 
-                placeholder="Tên địa điểm / Cửa hàng (Ví dụ: Highlands Coffee, Grab...)" 
-                value={placeName}
-                onChange={e => setPlaceName(e.target.value)}
-                className="bg-zinc-900 border-zinc-800 text-sm"
-              />
+              <div className="flex gap-2">
+                <Input 
+                  placeholder={t('form.placePlaceholder')} 
+                  value={placeName}
+                  onChange={e => setPlaceName(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 text-sm flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={searchCoordinatesFromPlace}
+                  disabled={isSearchingPlace || !placeName.trim()}
+                  className="bg-[#1e293b] hover:bg-zinc-800 border border-[#334155] text-zinc-300 h-9 shrink-0 text-xs px-2.5 font-bold"
+                >
+                  {isSearchingPlace ? '...' : 'Tìm bản đồ'}
+                </Button>
+              </div>
               {isLocAttached && lat && lng && (
-                <div className="text-[10px] text-zinc-500 font-mono flex items-center justify-between px-1 bg-zinc-900/40 py-1.5 rounded border border-zinc-800/40">
+                <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between px-2 bg-zinc-900/40 py-1.5 rounded border border-zinc-800/40">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                     <span>GPS: <strong>{parseFloat(lat).toFixed(4)}N</strong>, <strong>{parseFloat(lng).toFixed(4)}E</strong></span>
                   </span>
                   <button 
@@ -309,7 +312,7 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
                     }}
                     className="text-red-400 hover:text-red-300 transition-colors uppercase font-bold text-[9px] tracking-wider"
                   >
-                    Gỡ GPS
+                    {t('form.removeLocation')}
                   </button>
                 </div>
               )}
@@ -317,9 +320,13 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} className="text-zinc-500 hover:text-zinc-300">Cancel</Button>
-          <Button onClick={handleSubmit} className="bg-orange-600 hover:bg-orange-500">Save Transaction</Button>
+        <DialogFooter className="gap-2 sm:gap-0 mt-2">
+          <Button variant="ghost" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+            {t('form.cancel')}
+          </Button>
+          <Button onClick={handleSubmit} className="bg-[#6366f1] hover:bg-[#4f46e5] text-white">
+            {t('form.save')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

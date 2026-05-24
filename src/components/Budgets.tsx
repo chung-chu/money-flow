@@ -1,26 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { 
   PieChart, 
-  Plus, 
-  Edit3, 
-  MoreHorizontal,
   ChevronRight,
-  TrendingDown,
   Info
 } from 'lucide-react';
 import { Transaction, Category, Budget, TransactionType } from '../types';
 import { StorageService } from '../services/storageService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useLanguage } from '../context/LanguageContext';
+import { formatVND } from '../lib/utils';
 
 interface BudgetsProps {
   categories: Category[];
 }
 
 export default function Budgets({ categories }: BudgetsProps) {
+  const { t } = useLanguage();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -37,16 +35,21 @@ export default function Budgets({ categories }: BudgetsProps) {
   };
 
   const setDemoBudget = (catId: string) => {
-    const amount = prompt('Enter limit for this category:');
+    const amount = prompt(t('budget.setLimit') + ':');
     if (amount) {
+      const parsed = parseFloat(amount);
+      if (isNaN(parsed) || parsed <= 0) {
+        toast.error('Vui lòng nhập giá trị hợp lệ');
+        return;
+      }
       StorageService.setBudget({
         categoryId: catId,
-        limitAmount: parseFloat(amount),
+        limitAmount: parsed,
         month: currentMonth,
         userId: 'demo'
       });
       setBudgets(StorageService.getBudgets());
-      toast.success('Budget updated');
+      toast.success(t('settings.success'));
     }
   };
 
@@ -57,10 +60,12 @@ export default function Budgets({ categories }: BudgetsProps) {
           <div className="w-10 h-10 bg-[#12161F] border border-[#1E293B] rounded-lg flex items-center justify-center">
             <PieChart className="text-[#6366F1] w-5 h-5" />
           </div>
-          <h3 className="text-xl font-bold tracking-tight text-[#F8FAFC]">Active Budgets &bull; {currentMonth}</h3>
+          <h3 className="text-xl font-bold tracking-tight text-[#F8FAFC]">
+            {t('budget.title')} &bull; {currentMonth}
+          </h3>
         </div>
         <Button variant="outline" className="border-[#1E293B] bg-[#1E293B]/50 text-[#94A3B8] gap-2 hover:text-[#E2E8F0] hover:bg-[#1E293B]">
-          <Info className="w-4 h-4" /> Budget Assistant
+          <Info className="w-4 h-4" /> {t('budget.sub')}
         </Button>
       </div>
 
@@ -69,7 +74,8 @@ export default function Budgets({ categories }: BudgetsProps) {
           const budget = budgets.find(b => b.categoryId === cat.id && b.month === currentMonth);
           const spent = getExpensesForCategory(cat.id);
           const percent = budget ? (spent / budget.limitAmount) * 100 : 0;
-          const status = percent > 90 ? 'critical' : percent > 70 ? 'warning' : 'good';
+          const isOver = percent > 100;
+          const status = percent > 100 ? 'critical' : percent > 75 ? 'warning' : 'good';
 
           return (
             <Card key={cat.id} className="bg-[#12161F] border-[#1E293B] overflow-hidden group hover:border-[#6366F1]/30 transition-all">
@@ -97,26 +103,32 @@ export default function Budgets({ categories }: BudgetsProps) {
                     <div className="space-y-6">
                       <div className="flex items-end justify-between">
                         <div>
-                          <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-widest mb-1">Spent</p>
-                          <p className="text-2xl font-bold font-mono tracking-tighter text-[#F8FAFC]">${spent.toLocaleString()}</p>
+                          <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-widest mb-1">{t('budget.spent')}</p>
+                          <p className="text-xl font-bold font-mono tracking-tighter text-[#F8FAFC]}">{formatVND(spent)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-widest mb-1">Limit</p>
-                          <p className="text-large font-semibold text-[#64748B]">
-                             {budget ? `$${budget.limitAmount.toLocaleString()}` : <Button variant="link" onClick={() => setDemoBudget(cat.id)} className="h-auto p-0 text-[#6366F1] font-bold uppercase tracking-widest text-[10px]">Set Limit</Button>}
-                          </p>
+                          <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-widest mb-1">{t('budget.limit')}</p>
+                          <div className="text-sm font-semibold text-[#8e9cb0]">
+                             {budget ? (
+                               <span className="font-mono text-slate-100">{formatVND(budget.limitAmount)}</span>
+                             ) : (
+                               <Button variant="link" onClick={() => setDemoBudget(cat.id)} className="h-auto p-0 text-[#6366F1] font-bold uppercase tracking-widest text-[10px]">
+                                 {t('budget.setLimit')}
+                               </Button>
+                             )}
+                          </div>
                         </div>
                       </div>
 
                       <div className="space-y-2.5">
                         <div className="flex justify-between text-[10px] font-extrabold uppercase tracking-widest">
                           <span className="text-[#475569] italic">Progress</span>
-                          <span className={`${percent > 100 ? 'text-[#F43F5E]' : 'text-[#94A3B8]'}`}>{percent.toFixed(1)}%</span>
+                          <span className={`${isOver ? 'text-[#F43F5E]' : 'text-[#94A3B8]'}`}>{percent.toFixed(1)}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-[#0B0E14] rounded-full overflow-hidden border border-[#1E293B]">
                           <div 
                             className={`h-full transition-all duration-500 ${
-                              percent > 100 ? 'bg-[#F43F5E]' : 
+                              isOver ? 'bg-[#F43F5E]' : 
                               status === 'warning' ? 'bg-[#F59E0B]' : 'bg-[#6366F1]'
                             }`}
                             style={{ width: `${Math.min(percent, 100)}%` }}
@@ -126,9 +138,11 @@ export default function Budgets({ categories }: BudgetsProps) {
                     </div>
 
                     <div className="mt-6 pt-5 border-t border-[#1E293B]/50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-[10px] text-[#475569] italic font-medium uppercase tracking-tight">AI expects no drift this week</span>
+                      <span className="text-[10px] text-[#475569] italic font-medium uppercase tracking-tight">
+                        {isOver ? t('budget.overDescription') : 'Ngân sách vẫn an toàn'}
+                      </span>
                       <Button variant="ghost" size="sm" onClick={() => setDemoBudget(cat.id)} className="text-[10px] font-bold text-[#64748B] hover:text-[#6366F1] h-7 uppercase tracking-widest">
-                        Revise Budget <ChevronRight className="w-3 h-3 ml-1" />
+                        {t('budget.setLimit')} <ChevronRight className="w-3 h-3 ml-1" />
                       </Button>
                     </div>
                   </div>

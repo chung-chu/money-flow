@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Target, TrendingUp, Plus, Calendar, ChevronRight, Award } from 'lucide-react';
+import { Target, Plus, Calendar, Award } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { Goal } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useLanguage } from '../context/LanguageContext';
+import { formatVND } from '../lib/utils';
 
 export default function Goals() {
+  const { t } = useLanguage();
   const [goals, setGoals] = useState<Goal[]>([]);
 
   useEffect(() => {
@@ -16,27 +18,37 @@ export default function Goals() {
   }, []);
 
   const handleAddGoal = () => {
-    const name = prompt('Goal name (e.g. Macbook Fund):');
-    const target = prompt('Target amount:');
+    const name = prompt(t('goal.title') + ' (e.g. Macbook Fund):');
+    const target = prompt(t('goal.target') + ' (Amount):');
     if (name && target) {
+      const parsed = parseFloat(target);
+      if (isNaN(parsed) || parsed <= 0) {
+        toast.error('Số tiền không hợp lệ');
+        return;
+      }
       StorageService.addGoal({
         name,
-        targetAmount: parseFloat(target),
+        targetAmount: parsed,
         currentAmount: 0,
         deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         userId: 'demo'
       });
       setGoals(StorageService.getGoals());
-      toast.success('Goal created');
+      toast.success(t('form.success'));
     }
   };
 
   const handleContribute = (id: string, current: number) => {
-    const amount = prompt('Contribution amount:');
+    const amount = prompt('Số tiền đóng góp / Contribution amount:');
     if (amount) {
-      StorageService.updateGoal(id, current + parseFloat(amount));
+      const parsed = parseFloat(amount);
+      if (isNaN(parsed) || parsed <= 0) {
+        toast.error('Số tiền không hợp lệ');
+        return;
+      }
+      StorageService.updateGoal(id, current + parsed);
       setGoals(StorageService.getGoals());
-      toast.success('Nice! One step closer.');
+      toast.success('🎉 Đóng góp thành công!');
     }
   };
 
@@ -48,12 +60,12 @@ export default function Goals() {
             <Target className="text-[#6366F1] w-5 h-5 font-bold" />
           </div>
           <div>
-            <h3 className="text-xl font-bold tracking-tight text-[#F8FAFC]">Financial Conquests</h3>
-            <p className="text-[10px] text-[#94A3B8] uppercase tracking-[0.2em] font-bold">Accumulating long-term value</p>
+            <h3 className="text-xl font-bold tracking-tight text-[#F8FAFC]">{t('goal.title')}</h3>
+            <p className="text-[10px] text-[#94A3B8] uppercase tracking-[0.2em] font-bold">{t('goal.sub')}</p>
           </div>
         </div>
         <Button onClick={handleAddGoal} className="bg-[#6366F1] hover:bg-[#4F46E5] text-white gap-2 text-xs font-bold h-10 shadow-sm">
-          <Plus className="w-4 h-4" /> New Acquisition
+          <Plus className="w-4 h-4" /> {t('goal.title')}
         </Button>
       </div>
 
@@ -72,14 +84,14 @@ export default function Goals() {
                   <div className="space-y-1">
                     <h4 className="text-xl font-bold text-[#E2E8F0] tracking-tight">{goal.name}</h4>
                     <p className="text-[10px] text-[#64748B] uppercase tracking-[0.2em] font-extrabold flex items-center gap-2">
-                      <Calendar className="w-3 h-3" /> Target: {format(new Date(goal.deadline), 'MMM dd, yyyy')}
+                      <Calendar className="w-3 h-3" /> {t('goal.target')}: {format(new Date(goal.deadline), 'MMM dd, yyyy')}
                     </p>
                   </div>
 
                   <div className="flex items-end justify-between">
                     <div>
-                      <p className="text-3xl font-bold font-mono tracking-tighter text-[#F8FAFC] italic">${goal.currentAmount.toLocaleString()}</p>
-                      <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-widest">Aggregate of ${goal.targetAmount.toLocaleString()}</p>
+                      <p className="text-2xl font-bold font-mono tracking-tighter text-[#F8FAFC]} italic">{formatVND(goal.currentAmount)}</p>
+                      <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-widest">{t('goal.target')}: {formatVND(goal.targetAmount)}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-2xl font-bold text-[#6366F1] italic font-mono">{Math.round(percent)}%</span>
@@ -99,7 +111,7 @@ export default function Goals() {
                     onClick={() => handleContribute(goal.id, goal.currentAmount)}
                     className="w-full bg-[#1E293B] border border-[#334155] hover:bg-[#334155] text-[#94A3B8] font-bold uppercase tracking-widest text-[10px] h-10 shadow-sm"
                   >
-                    Inject Capital
+                    {t('goal.saved')}
                   </Button>
                 </div>
               </CardContent>
@@ -110,7 +122,7 @@ export default function Goals() {
         {goals.length === 0 && (
           <div className="lg:col-span-3 py-24 text-center border border-dashed border-[#1E293B] bg-[#12161F]/50 rounded-3xl">
             <Target className="w-12 h-12 mx-auto mb-4 opacity-5" />
-            <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#475569]">No active target acquisitions.</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#475569]">Chưa khởi chạy mục tiêu tài tích lũy nào.</p>
           </div>
         )}
       </div>
