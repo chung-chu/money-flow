@@ -137,9 +137,12 @@ export class StorageService {
   }
 
   // Transactions
-  static getTransactions(): Transaction[] {
+  static getTransactions(userId?: string): Transaction[] {
     const transactions = this.get<Transaction>(STORAGE_KEYS.TRANSACTIONS);
-    if (transactions.length === 0) {
+    const activeUserId = userId || 'demo';
+    const userTx = transactions.filter(t => t.userId === activeUserId);
+    
+    if (userTx.length === 0 && activeUserId === 'demo') {
       // Seed default transactions with nested Category IDs
       const demoData: Transaction[] = [
         { id: 't1', amount: 45000000, type: TransactionType.INCOME, categoryId: '5-1', date: new Date().toISOString().split('T')[0], note: 'Monthly Salary (Lương cứng)', userId: 'demo', createdAt: new Date().toISOString() },
@@ -155,8 +158,38 @@ export class StorageService {
         demoData.forEach(tx => this.pushTransactionToSupabase(tx));
       }
       return demoData;
+    } else if (userTx.length === 0) {
+      // If a real user is empty, seed 2 startup templates
+      const userCategories = this.getCategories(activeUserId);
+      const foodCat = userCategories.find(c => c.name.includes('Ăn') || c.id.includes('1-1'));
+      const incomeCat = userCategories.find(c => c.name.includes('Thu') || c.id.includes('5-1'));
+      const startupTx: Transaction[] = [
+        { 
+          id: `${activeUserId}_t1`, 
+          amount: 20000000, 
+          type: TransactionType.INCOME, 
+          categoryId: incomeCat?.id || '5-1', 
+          date: new Date().toISOString().split('T')[0], 
+          note: 'Lương khởi điểm nhận bằng ví vạn năng 💼', 
+          userId: activeUserId, 
+          createdAt: new Date().toISOString() 
+        },
+        { 
+          id: `${activeUserId}_t2`, 
+          amount: 65000, 
+          type: TransactionType.EXPENSE, 
+          categoryId: foodCat?.id || '1-1', 
+          date: new Date().toISOString().split('T')[0], 
+          note: 'Ăn sáng phở bò tái chín 🍜', 
+          userId: activeUserId, 
+          createdAt: new Date().toISOString() 
+        }
+      ];
+      const allTx = [...transactions, ...startupTx];
+      this.set(STORAGE_KEYS.TRANSACTIONS, allTx);
+      return startupTx;
     }
-    return transactions;
+    return userTx;
   }
 
   private static pushTransactionToSupabase(tx: Transaction): void {
@@ -177,7 +210,7 @@ export class StorageService {
   }
 
   static addTransaction(tx: Omit<Transaction, 'id' | 'createdAt'>): Transaction {
-    const transactions = this.getTransactions();
+    const transactions = this.get<Transaction>(STORAGE_KEYS.TRANSACTIONS);
     const newTx: Transaction = {
       ...tx,
       id: Math.random().toString(36).substring(7),
@@ -192,7 +225,7 @@ export class StorageService {
   }
 
   static deleteTransaction(id: string): void {
-    const transactions = this.getTransactions().filter(t => t.id !== id);
+    const transactions = this.get<Transaction>(STORAGE_KEYS.TRANSACTIONS).filter(t => t.id !== id);
     this.set(STORAGE_KEYS.TRANSACTIONS, transactions);
 
     if (isSupabaseConfigured) {
@@ -203,14 +236,28 @@ export class StorageService {
   }
 
   // Categories
-  static getCategories(): Category[] {
+  static getCategories(userId?: string): Category[] {
     const categories = this.get<Category>(STORAGE_KEYS.CATEGORIES);
-    const resolvedCat = categories.length > 0 ? categories : DEFAULT_CATEGORIES;
-    return resolvedCat;
+    const activeUserId = userId || 'demo';
+    const userCat = categories.filter(c => c.userId === activeUserId);
+    
+    if (userCat.length === 0) {
+      // Seed categories customized for this user
+      const seeded = DEFAULT_CATEGORIES.map(c => ({
+        ...c,
+        id: activeUserId === 'demo' ? c.id : `${activeUserId}_${c.id}`,
+        userId: activeUserId,
+        parentId: c.parentId ? (activeUserId === 'demo' ? c.parentId : `${activeUserId}_${c.parentId}`) : undefined
+      }));
+      const updatedCategories = [...categories, ...seeded];
+      this.set(STORAGE_KEYS.CATEGORIES, updatedCategories);
+      return seeded;
+    }
+    return userCat;
   }
 
   static addCategory(cat: Omit<Category, 'id'>): Category {
-    const categories = this.getCategories();
+    const categories = this.get<Category>(STORAGE_KEYS.CATEGORIES);
     const newCat: Category = {
       ...cat,
       id: Math.random().toString(36).substring(7),
@@ -233,8 +280,12 @@ export class StorageService {
     return newCat;
   }
 
-  static deleteCategory(id: string): void {
-    const categories = this.getCategories().filter(c => c.id !== id && c.parentId !== id);
+  static deleteCategory(id: string, userId?: string): void {
+    const activeUserId = userId || 'demo';
+    const categories = this.get<Category>(STORAGE_KEYS.CATEGORIES).filter(c => 
+      !(c.id === id && c.userId === activeUserId) && 
+      !(c.parentId === id && c.userId === activeUserId)
+    );
     this.set(STORAGE_KEYS.CATEGORIES, categories);
 
     if (isSupabaseConfigured) {
@@ -245,13 +296,15 @@ export class StorageService {
   }
 
   // Budgets
-  static getBudgets(): Budget[] {
-    return this.get<Budget>(STORAGE_KEYS.BUDGETS);
+  static getBudgets(userId?: string): Budget[] {
+    const budgets = this.get<Budget>(STORAGE_KEYS.BUDGETS);
+    const activeUserId = userId || 'demo';
+    return budgets.filter(b => b.userId === activeUserId);
   }
 
   static setBudget(budget: Omit<Budget, 'id'>): Budget {
-    const budgets = this.getBudgets();
-    const existingIndex = budgets.findIndex(b => b.categoryId === budget.categoryId && b.month === budget.month);
+    const budgets = this.get<Budget>(STORAGE_KEYS.BUDGETS);
+    const existingIndex = budgets.findIndex(b => b.categoryId === budget.categoryId && b.month === budget.month && b.userId === budget.userId);
     let resolvedBudget: Budget;
 
     if (existingIndex > -1) {
@@ -283,12 +336,14 @@ export class StorageService {
   }
 
   // Goals
-  static getGoals(): Goal[] {
-    return this.get<Goal>(STORAGE_KEYS.GOALS);
+  static getGoals(userId?: string): Goal[] {
+    const goals = this.get<Goal>(STORAGE_KEYS.GOALS);
+    const activeUserId = userId || 'demo';
+    return goals.filter(g => g.userId === activeUserId);
   }
 
   static addGoal(goal: Omit<Goal, 'id'>): Goal {
-    const goals = this.getGoals();
+    const goals = this.get<Goal>(STORAGE_KEYS.GOALS);
     const newGoal: Goal = {
       ...goal,
       id: Math.random().toString(36).substring(7),
@@ -312,7 +367,7 @@ export class StorageService {
   }
 
   static updateGoal(id: string, currentAmount: number): void {
-    const goals = this.getGoals().map(g => g.id === id ? { ...g, currentAmount } : g);
+    const goals = this.get<Goal>(STORAGE_KEYS.GOALS).map(g => g.id === id ? { ...g, currentAmount } : g);
     this.set(STORAGE_KEYS.GOALS, goals);
 
     if (isSupabaseConfigured) {

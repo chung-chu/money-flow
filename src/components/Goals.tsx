@@ -9,13 +9,17 @@ import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
 import { formatVND } from '../lib/utils';
 
-export default function Goals() {
+interface GoalsProps {
+  userId?: string;
+}
+
+export default function Goals({ userId = 'demo' }: GoalsProps) {
   const { t } = useLanguage();
   const [goals, setGoals] = useState<Goal[]>([]);
 
   useEffect(() => {
-    setGoals(StorageService.getGoals());
-  }, []);
+    setGoals(StorageService.getGoals(userId));
+  }, [userId]);
 
   const handleAddGoal = () => {
     const name = prompt(t('goal.title') + ' (e.g. Macbook Fund):');
@@ -31,9 +35,9 @@ export default function Goals() {
         targetAmount: parsed,
         currentAmount: 0,
         deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        userId: 'demo'
+        userId: userId
       });
-      setGoals(StorageService.getGoals());
+      setGoals(StorageService.getGoals(userId));
       toast.success(t('form.success'));
     }
   };
@@ -47,7 +51,7 @@ export default function Goals() {
         return;
       }
       StorageService.updateGoal(id, current + parsed);
-      setGoals(StorageService.getGoals());
+      setGoals(StorageService.getGoals(userId));
       toast.success('🎉 Đóng góp thành công!');
     }
   };

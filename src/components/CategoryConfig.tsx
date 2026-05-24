@@ -81,9 +81,10 @@ const PRESET_COLORS = [
 interface CategoryConfigProps {
   categories: Category[];
   onRefresh: () => void;
+  userId?: string;
 }
 
-export default function CategoryConfig({ categories, onRefresh }: CategoryConfigProps) {
+export default function CategoryConfig({ categories, onRefresh, userId = 'demo' }: CategoryConfigProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
@@ -132,7 +133,7 @@ export default function CategoryConfig({ categories, onRefresh }: CategoryConfig
       type,
       icon: selectedIcon,
       color: selectedColor,
-      userId: 'demo',
+      userId: userId,
       parentId: parentId === 'none' ? undefined : parentId,
     });
 
@@ -143,7 +144,7 @@ export default function CategoryConfig({ categories, onRefresh }: CategoryConfig
 
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Bạn có chắc muốn xóa danh mục "${name}"? Các danh mục phụ liên quan cũng sẽ bị xóa.`)) {
-      StorageService.deleteCategory(id);
+      StorageService.deleteCategory(id, userId);
       toast.success(`Đã xóa danh mục "${name}"`);
       onRefresh();
     }

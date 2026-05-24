@@ -33,6 +33,7 @@ import Goals from './components/Goals';
 import MapAnalysis from './components/MapAnalysis';
 import SettingsModal from './components/SettingsModal';
 import AiChatbot from './components/AiChatbot';
+import AuthPage from './components/AuthPage';
 import { Toaster } from 'sonner';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
@@ -40,6 +41,13 @@ import { useLanguage } from './context/LanguageContext';
 
 export default function App() {
   const { t } = useLanguage();
+  
+  // Load initial user session if saved
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; phone: string; avatar: string } | null>(() => {
+    const saved = localStorage.getItem('moneyflow_current_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -50,20 +58,59 @@ export default function App() {
   const [showMoreMenuMobile, setShowMoreMenuMobile] = useState(false);
 
   useEffect(() => {
-    setTransactions(StorageService.getTransactions());
-    setCategories(StorageService.getCategories());
+    if (!currentUser) return;
+    
+    setTransactions(StorageService.getTransactions(currentUser.id));
+    setCategories(StorageService.getCategories(currentUser.id));
     
     // Auto background sync with Supabase on mount
     StorageService.syncWithSupabase(() => {
-      setTransactions(StorageService.getTransactions());
-      setCategories(StorageService.getCategories());
+      setTransactions(StorageService.getTransactions(currentUser.id));
+      setCategories(StorageService.getCategories(currentUser.id));
     });
-  }, []);
+  }, [currentUser]);
 
   const refreshData = () => {
-    setTransactions(StorageService.getTransactions());
-    setCategories(StorageService.getCategories());
+    if (!currentUser) return;
+    setTransactions(StorageService.getTransactions(currentUser.id));
+    setCategories(StorageService.getCategories(currentUser.id));
   };
+
+  const handleLogin = (user: { id: string; name: string; phone: string; avatar: string }) => {
+    localStorage.setItem('moneyflow_current_user', JSON.stringify(user));
+    setCurrentUser(user);
+    setActiveTab('dashboard');
+  };
+
+  const handleUpdateProfile = (updated: { name: string; avatar: string }) => {
+    if (!currentUser) return;
+    const nextUser = { ...currentUser, name: updated.name, avatar: updated.avatar };
+    localStorage.setItem('moneyflow_current_user', JSON.stringify(nextUser));
+    
+    // Update raw users directory as well
+    const usersList = JSON.parse(localStorage.getItem('moneyflow_users') || '[]');
+    const index = usersList.findIndex((u: any) => u.phone === currentUser.phone);
+    if (index > -1) {
+      usersList[index] = { ...usersList[index], name: updated.name, avatar: updated.avatar };
+      localStorage.setItem('moneyflow_users', JSON.stringify(usersList));
+    }
+    
+    setCurrentUser(nextUser);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('moneyflow_current_user');
+    setCurrentUser(null);
+  };
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#0B0E14] text-[#E2E8F0] selection:bg-[#6366F1]/30">
+        <Toaster position="top-right" theme="dark" />
+        <AuthPage onLogin={handleLogin} />
+      </div>
+    );
+  }
 
   const navItems = [
     { id: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
@@ -80,7 +127,7 @@ export default function App() {
       <Toaster position="top-right" theme="dark" />
       
       {/* Sidebar (Tablet/Desktop only) */}
-      <aside className={`hidden lg:block fixed top-0 left-0 h-full bg-[#12161F] border-r border-[#1E293B] transition-all duration-300 z-50 ${isSidebarOpen ? 'w-[220px]' : 'w-20'}`}>
+      <aside className={`hidden lg:block fixed top-0 left-0 h-full bg-[#12161F] border-r border-[#1E293B] transition-all duration-200 z-50 ${isSidebarOpen ? 'w-[220px]' : 'w-20'}`}>
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-[#6366F1] rounded-lg flex items-center justify-center shadow-lg shadow-[#6366F1]/20">
             <BarChart3 className="text-white w-5 h-5" />
@@ -118,7 +165,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area (With flexible margins and bottom spacing for mobile tab bar) */}
-      <main className={`transition-all duration-300 ${isSidebarOpen ? 'lg:ml-[220px]' : 'lg:ml-20'} ml-0 min-h-screen flex flex-col pb-20 lg:pb-0`}>
+      <main className={`transition-all duration-200 ${isSidebarOpen ? 'lg:ml-[220px]' : 'lg:ml-20'} ml-0 min-h-screen flex flex-col pb-20 lg:pb-0`}>
         {/* Header (Stylized with adaptive padding and hidden extra elements on mobile) */}
         <header className="h-16 border-b border-[#1E293B] flex items-center justify-between px-4 sm:px-8 bg-[#0B0E14]/80 backdrop-blur sticky top-0 z-40">
           <div className="flex items-center gap-3">
@@ -135,6 +182,16 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowSettingsModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#12161F]/80 hover:bg-[#1E293B] border border-[#1E293B]/70 rounded-lg cursor-pointer transition-all active:scale-95 text-xs font-bold text-slate-100 select-none mr-1"
+              >
+                <span className="text-sm">{currentUser.avatar}</span>
+                <span className="hidden sm:inline-block max-w-[110px] truncate">{currentUser.name}</span>
+              </button>
+            </div>
+
             <div className="relative group hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B]" />
               <Input 
@@ -170,11 +227,11 @@ export default function App() {
               className="max-w-[1400px] mx-auto"
             >
               {activeTab === 'dashboard' && <Dashboard transactions={transactions} categories={categories} />}
-              {activeTab === 'transactions' && <TransactionList transactions={transactions} categories={categories} onRefresh={refreshData} />}
-              {activeTab === 'categories' && <CategoryConfig categories={categories} onRefresh={refreshData} />}
+              {activeTab === 'transactions' && <TransactionList transactions={transactions} categories={categories} onRefresh={refreshData} userId={currentUser.id} />}
+              {activeTab === 'categories' && <CategoryConfig categories={categories} onRefresh={refreshData} userId={currentUser.id} />}
               {activeTab === 'analytics' && <Analytics transactions={transactions} categories={categories} />}
-              {activeTab === 'budgets' && <Budgets categories={categories} />}
-              {activeTab === 'goals' && <Goals />}
+              {activeTab === 'budgets' && <Budgets categories={categories} userId={currentUser.id} />}
+              {activeTab === 'goals' && <Goals userId={currentUser.id} />}
               {activeTab === 'map' && <MapAnalysis transactions={transactions} categories={categories} />}
             </motion.div>
           </AnimatePresence>
@@ -331,12 +388,16 @@ export default function App() {
         onClose={() => setShowAddModal(false)}
         onSuccess={refreshData}
         categories={categories}
+        userId={currentUser.id}
       />
 
       {/* Settings Modal (Now Active and Fully functional!) */}
       <SettingsModal 
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+        currentUser={currentUser}
+        onUpdateUser={handleUpdateProfile}
+        onLogout={handleLogout}
       />
 
       {/* Floating AI Chatbot Assistant */}

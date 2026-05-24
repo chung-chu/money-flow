@@ -15,18 +15,19 @@ import { formatVND } from '../lib/utils';
 
 interface BudgetsProps {
   categories: Category[];
+  userId?: string;
 }
 
-export default function Budgets({ categories }: BudgetsProps) {
+export default function Budgets({ categories, userId = 'demo' }: BudgetsProps) {
   const { t } = useLanguage();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   useEffect(() => {
-    setBudgets(StorageService.getBudgets());
-    setTransactions(StorageService.getTransactions());
-  }, []);
+    setBudgets(StorageService.getBudgets(userId));
+    setTransactions(StorageService.getTransactions(userId));
+  }, [userId]);
 
   const getExpensesForCategory = (catId: string) => {
     return transactions
@@ -46,9 +47,9 @@ export default function Budgets({ categories }: BudgetsProps) {
         categoryId: catId,
         limitAmount: parsed,
         month: currentMonth,
-        userId: 'demo'
+        userId: userId
       });
-      setBudgets(StorageService.getBudgets());
+      setBudgets(StorageService.getBudgets(userId));
       toast.success(t('settings.success'));
     }
   };

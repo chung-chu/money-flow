@@ -21,23 +21,17 @@ import { StorageService } from '../services/storageService';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { Camera, Upload, RotateCcw, Video, X, MapPin } from 'lucide-react';
-
-const VN_PRESETS = [
-  { name: 'Thành phố Thủ Đức, TP.HCM', lat: '10.8494', lng: '106.7537' },
-  { name: 'Quận Hà Đông, Hà Nội (Hà Tây cũ)', lat: '20.9687', lng: '105.7745' },
-  { name: 'Thị xã Sơn Tây, Hà Nội', lat: '21.1348', lng: '105.5057' },
-  { name: 'Thành phố Vinh mở rộng, Nghệ An', lat: '18.6734', lng: '105.6811' },
-  { name: 'Thành phố Bến Cát, Bình Dương', lat: '11.1344', lng: '106.6322' }
-];
+import { useMapsLibrary } from '@vis.gl/react-google-maps';
 
 interface TransactionFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   categories: Category[];
+  userId?: string;
 }
 
-export default function TransactionForm({ isOpen, onClose, onSuccess, categories }: TransactionFormProps) {
+export default function TransactionForm({ isOpen, onClose, onSuccess, categories, userId = 'demo' }: TransactionFormProps) {
   const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
@@ -58,6 +52,89 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isLocAttached, setIsLocAttached] = useState(false);
   const [isSearchingPlace, setIsSearchingPlace] = useState(false);
+
+  // Google Maps Places Autocomplete integration
+  const placesLib = useMapsLibrary('places');
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const autocompleteServiceRef = useRef<any>(null);
+  const placesServiceRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!placesLib) return;
+    try {
+      autocompleteServiceRef.current = new placesLib.AutocompleteService();
+      const dummyDiv = document.createElement('div');
+      placesServiceRef.current = new placesLib.PlacesService(dummyDiv);
+    } catch (e) {
+      console.error('Error initializing Google Places Service:', e);
+    }
+  }, [placesLib]);
+
+  useEffect(() => {
+    if (!placeName || !autocompleteServiceRef.current || isSearchingPlace) {
+      setAutocompleteSuggestions([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      try {
+        autocompleteServiceRef.current.getPlacePredictions(
+          {
+            input: placeName,
+            language: 'vi',
+            componentRestrictions: { country: 'vn' }
+          },
+          (predictions: any, status: any) => {
+            if (status === 'OK' && predictions) {
+              setAutocompleteSuggestions(predictions);
+              setShowSuggestions(true);
+            } else {
+              setAutocompleteSuggestions([]);
+            }
+          }
+        );
+      } catch (err) {
+        console.error('Autocomplete prediction error:', err);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [placeName, isSearchingPlace]);
+
+  const handleSelectSuggestion = (prediction: any) => {
+    setPlaceName(prediction.description);
+    setAutocompleteSuggestions([]);
+    setShowSuggestions(false);
+
+    if (!placesServiceRef.current) return;
+
+    setIsSearchingPlace(true);
+    try {
+      placesServiceRef.current.getDetails(
+        {
+          placeId: prediction.place_id,
+          fields: ['geometry']
+        },
+        (place: any, status: any) => {
+          setIsSearchingPlace(false);
+          if (status === 'OK' && place?.geometry?.location) {
+            const latitude = place.geometry.location.lat().toString();
+            const longitude = place.geometry.location.lng().toString();
+            setLat(latitude);
+            setLng(longitude);
+            setIsLocAttached(true);
+            toast.success(`Đã định vị: ${prediction.structured_formatting?.main_text || prediction.description}`);
+          } else {
+            toast.error('Không tìm thấy tọa độ chi tiết cho địa điểm này.');
+          }
+        }
+      );
+    } catch (err) {
+      setIsSearchingPlace(false);
+      console.error('Error getting details:', err);
+    }
+  };
 
   // Stop camera stream when component closes or unmounts
   useEffect(() => {
@@ -260,7 +337,7 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
       placeName: placeName.trim() || undefined,
       location: tLocation,
       locketImage: locketImage || undefined,
-      userId: 'demo'
+      userId: userId
     });
 
     toast.success(t('form.success'));
@@ -492,46 +569,58 @@ export default function TransactionForm({ isOpen, onClose, onSuccess, categories
             </div>
 
             <div className="space-y-2">
-              <div className="flex gap-2">
-                <Input 
-                  placeholder={t('form.placePlaceholder')} 
-                  value={placeName}
-                  onChange={e => setPlaceName(e.target.value)}
-                  className="bg-zinc-900 border-zinc-800 text-sm flex-1 text-zinc-100"
-                />
+              <div className="flex gap-2 relative">
+                <div className="relative flex-1">
+                  <Input 
+                    placeholder={t('form.placePlaceholder')} 
+                    value={placeName}
+                    onChange={e => {
+                      setPlaceName(e.target.value);
+                      if (!e.target.value) {
+                        setAutocompleteSuggestions([]);
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (autocompleteSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    className="bg-zinc-900 border-zinc-800 text-sm w-full text-zinc-100 rounded-md"
+                  />
+                  {showSuggestions && autocompleteSuggestions.length > 0 && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-[45]" 
+                        onClick={() => setShowSuggestions(false)}
+                      />
+                      <div className="absolute left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-[#12161F] border border-zinc-800 rounded-md z-[50] shadow-2xl divide-y divide-zinc-900">
+                        {autocompleteSuggestions.map((suggestion) => (
+                          <div
+                            key={suggestion.place_id}
+                            onClick={() => handleSelectSuggestion(suggestion)}
+                            className="p-2.5 text-xs text-zinc-300 hover:text-white hover:bg-[#1E293B] cursor-pointer transition-colors text-left"
+                          >
+                            <div className="font-semibold text-zinc-100">
+                              {suggestion.structured_formatting?.main_text || suggestion.description}
+                            </div>
+                            <div className="text-[10px] text-zinc-500 truncate">
+                              {suggestion.structured_formatting?.secondary_text || suggestion.description}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <Button
                   type="button"
                   onClick={searchCoordinatesFromPlace}
                   disabled={isSearchingPlace || !placeName.trim()}
-                  className="bg-[#1e293b] hover:bg-zinc-800 border border-[#334155] text-zinc-300 h-9 shrink-0 text-xs px-2.5 font-bold"
+                  className="bg-[#1e293b] hover:bg-zinc-800 border border-[#334155] text-zinc-300 h-9 shrink-0 text-xs px-2.5 font-bold rounded-md"
                 >
                   {isSearchingPlace ? '...' : 'Tìm bản đồ'}
                 </Button>
-              </div>
-
-              {/* Administrative mergers list for rapid VN autocompletes */}
-              <div className="flex flex-col gap-1.5 bg-zinc-950/45 p-2 rounded-lg border border-zinc-900">
-                <span className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-500">
-                  ⚡ Gợi ý vùng miền địa lý (Sau sát nhập):
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {VN_PRESETS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => {
-                        setPlaceName(preset.name);
-                        setLat(preset.lat);
-                        setLng(preset.lng);
-                        setIsLocAttached(true);
-                        toast.success(`Đã chọn: ${preset.name}`);
-                      }}
-                      className="text-[9px] bg-zinc-900 text-zinc-300 border border-zinc-850 hover:bg-[#1e293b] rounded px-2 py-0.5 font-medium transition-colors cursor-pointer"
-                    >
-                      {preset.name.split(',')[0]}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {isLocAttached && lat && lng && (

@@ -3,13 +3,14 @@ import {
   Trash2, 
   Filter, 
   Download, 
-  ChevronLeft,
-  ChevronRight,
-  MoreVertical,
-  SlidersHorizontal,
-  MapPin,
-  X
+  ChevronLeft, 
+  ChevronRight, 
+  MoreVertical, 
+  SlidersHorizontal, 
+  MapPin, 
+  X 
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Transaction, Category, TransactionType } from '../types';
 import { StorageService } from '../services/storageService';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,9 +26,10 @@ interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
   onRefresh: () => void;
+  userId?: string;
 }
 
-export default function TransactionList({ transactions, categories, onRefresh }: TransactionListProps) {
+export default function TransactionList({ transactions, categories, onRefresh, userId = 'demo' }: TransactionListProps) {
   const { t } = useLanguage();
   const [filterType, setFilterType] = useState<'all' | TransactionType>('all');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -357,98 +359,123 @@ export default function TransactionList({ transactions, categories, onRefresh }:
         </div>
 
         {/* MOBILE & TABLET CARD VIEW (Fluid stacking, completely eradicating horizontal scrollbars) */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-3 overflow-hidden">
           {paginatedItems.map((tx) => {
             const category = categories.find(c => c.id === tx.categoryId);
             const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : null;
             const displayText = parentCategory ? `${parentCategory.name} › ${category?.name}` : (category?.name || 'Không có');
             return (
-              <div key={tx.id} className="bg-[#12161F] border border-[#1E293B] rounded-xl p-4 space-y-3.5 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-[#64748B] font-mono italic block">
-                      {tx.date}
-                    </span>
-                    <Badge variant="outline" className="border-[#1E293B] bg-[#1E293B]/50 text-[#94A3B8] font-extrabold text-[9px] uppercase tracking-widest px-1.5 py-0">
-                      {displayText}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 relative">
-                    <span className={`text-[15px] font-extrabold italic font-mono ${tx.type === TransactionType.INCOME ? 'text-[#10B981]' : 'text-zinc-200'}`}>
-                      {tx.type === TransactionType.INCOME ? '+' : '-'}{formatVND(tx.amount)}
-                    </span>
-                    
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMenuTxId(activeMenuTxId === tx.id ? null : tx.id);
-                      }}
-                      className="p-1.5 text-zinc-400 hover:text-white rounded-md bg-zinc-950/40 border border-zinc-850 cursor-pointer"
-                    >
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </button>
-
-                    {activeMenuTxId === tx.id && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-10" 
-                          onClick={() => setActiveMenuTxId(null)}
-                        />
-                        <div className="absolute right-0 top-8 w-32 bg-[#12161F] border border-[#1E293B] rounded-lg shadow-2xl py-1.5 z-20 text-left animate-fade-in">
-                          <button
-                            onClick={() => {
-                              setActiveMenuTxId(null);
-                              toast.info("Tính năng chỉnh sửa thủ công đang phát triển. Bạn có thể sử dụng Trợ lý AI để sửa!");
-                            }}
-                            className="w-full px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-[#1E293B] flex items-center gap-2 cursor-pointer text-left"
-                          >
-                            ✏️ Sửa
-                          </button>
-                          <button
-                            onClick={() => {
-                              setActiveMenuTxId(null);
-                              if (window.confirm("Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.")) {
-                                handleDelete(tx.id);
-                              }
-                            }}
-                            className="w-full px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer text-left font-semibold border-t border-[#1E293B]/60"
-                          >
-                            <Trash2 className="w-3 h-3" /> Xóa
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+              <div key={tx.id} className="relative overflow-hidden rounded-xl bg-[#221014]">
+                
+                {/* Swipe Action Underlay on the right */}
+                <div className="absolute top-0 right-0 bottom-0 w-[100px] bg-red-600 flex items-center justify-center rounded-r-xl">
+                  <button 
+                    onClick={() => {
+                      if (window.confirm("Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.")) {
+                        handleDelete(tx.id);
+                      }
+                    }}
+                    className="w-full h-full text-white font-extrabold text-[10px] uppercase tracking-wider flex flex-col items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4 text-white" />
+                    <span>Xóa iOS</span>
+                  </button>
                 </div>
 
-                {/* 1:1 Polaroid aspect styled exactly like Locket app */}
-                {tx.locketImage && (
-                  <div className="flex justify-center py-1 bg-zinc-950/20 rounded-lg border border-zinc-900/30">
-                    <div 
-                      onClick={() => setPreviewPhoto({ url: tx.locketImage!, note: tx.note, date: tx.date, place: tx.placeName })}
-                      className="w-48 bg-zinc-900 p-2 border border-zinc-800 rounded shadow-xl flex flex-col items-center cursor-zoom-in"
-                    >
-                      <div className="relative w-full aspect-square overflow-hidden bg-black rounded">
-                        <img src={tx.locketImage} alt="Locket moments" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[7px] tracking-widest uppercase font-extrabold px-1 rounded">
-                          Locket 1:1
-                        </span>
-                      </div>
-                      <span className="text-[9px] text-[#64748B] font-mono italic mt-1.5 uppercase tracking-wider text-center w-full truncate">
-                        {tx.note || 'Chi tiêu 1:1'}
+                {/* IOS Slideable card foreground */}
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: -100, right: 0 }}
+                  dragElastic={{ left: 0.05, right: 0.15 }}
+                  dragTransition={{ bounceStiffness: 600, bounceDamping: 25 }}
+                  className="bg-[#12161F] border border-[#1E293B] rounded-xl p-4 space-y-3.5 shadow-sm relative z-10 cursor-grab active:cursor-grabbing select-none"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-[#64748B] font-mono italic block">
+                        {tx.date}
                       </span>
+                      <Badge variant="outline" className="border-[#1E293B] bg-[#1E293B]/50 text-[#94A3B8] font-extrabold text-[9px] uppercase tracking-widest px-1.5 py-0">
+                        {displayText}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 relative">
+                      <span className={`text-[15px] font-extrabold italic font-mono ${tx.type === TransactionType.INCOME ? 'text-[#10B981]' : 'text-zinc-200'}`}>
+                        {tx.type === TransactionType.INCOME ? '+' : '-'}{formatVND(tx.amount)}
+                      </span>
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuTxId(activeMenuTxId === tx.id ? null : tx.id);
+                        }}
+                        className="p-1.5 text-zinc-400 hover:text-white rounded-md bg-zinc-950/40 border border-zinc-850 cursor-pointer"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+
+                      {activeMenuTxId === tx.id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setActiveMenuTxId(null)}
+                          />
+                          <div className="absolute right-0 top-8 w-32 bg-[#12161F] border border-[#1E293B] rounded-lg shadow-2xl py-1.5 z-20 text-left animate-fade-in">
+                            <button
+                              onClick={() => {
+                                setActiveMenuTxId(null);
+                                toast.info("Tính năng chỉnh sửa thủ công đang phát triển. Bạn có thể sử dụng Trợ lý AI để sửa!");
+                              }}
+                              className="w-full px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-[#1E293B] flex items-center gap-2 cursor-pointer text-left font-bold"
+                            >
+                              ✏️ Sửa
+                            </button>
+                            <button
+                              onClick={() => {
+                                setActiveMenuTxId(null);
+                                if (window.confirm("Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.")) {
+                                  handleDelete(tx.id);
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer text-left font-bold border-t border-[#1E293B]/60"
+                            >
+                              <Trash2 className="w-3 h-3" /> Xóa
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-                )}
 
-                <div className="text-zinc-400 text-xs font-semibold leading-relaxed space-y-1">
-                  {tx.note && <p className="text-zinc-300">{tx.note}</p>}
-                  {tx.placeName && (
-                    <span className="inline-flex items-center gap-1.5 text-[10px] text-[#64748B] bg-zinc-950/20 px-2 py-0.5 rounded border border-zinc-900/40">
-                      📍 {tx.placeName}
-                    </span>
+                  {/* 1:1 Polaroid aspect styled exactly like Locket app */}
+                  {tx.locketImage && (
+                    <div className="flex justify-center py-1 bg-zinc-950/20 rounded-lg border border-zinc-900/30">
+                      <div 
+                        onClick={() => setPreviewPhoto({ url: tx.locketImage!, note: tx.note, date: tx.date, place: tx.placeName })}
+                        className="w-48 bg-zinc-900 p-2 border border-zinc-800 rounded shadow-xl flex flex-col items-center cursor-zoom-in"
+                      >
+                        <div className="relative w-full aspect-square overflow-hidden bg-black rounded">
+                          <img src={tx.locketImage} alt="Locket moments" className="w-full h-full object-cover" />
+                          <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[7px] tracking-widest uppercase font-extrabold px-1 rounded">
+                            Locket 1:1
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-[#64748B] font-mono italic mt-1.5 uppercase tracking-wider text-center w-full truncate">
+                          {tx.note || 'Chi tiêu 1:1'}
+                        </span>
+                      </div>
+                    </div>
                   )}
-                </div>
+
+                  <div className="text-zinc-400 text-xs font-semibold leading-relaxed space-y-1">
+                    {tx.note && <p className="text-zinc-300">{tx.note}</p>}
+                    {tx.placeName && (
+                      <span className="inline-flex items-center gap-1.5 text-[10px] text-[#64748B] bg-zinc-950/20 px-2 py-0.5 rounded border border-zinc-900/40">
+                        📍 {tx.placeName}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
               </div>
             );
           })}
