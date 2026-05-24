@@ -20,6 +20,7 @@ export interface Transaction {
   placeName?: string;
   userId: string;
   createdAt: string;
+  locketImage?: string; // Base64 dataURL representation of snapped 1:1 photo
 }
 
 export interface Category {

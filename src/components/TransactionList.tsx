@@ -7,7 +7,8 @@ import {
   ChevronRight,
   MoreVertical,
   SlidersHorizontal,
-  MapPin
+  MapPin,
+  X
 } from 'lucide-react';
 import { Transaction, Category, TransactionType } from '../types';
 import { StorageService } from '../services/storageService';
@@ -122,6 +123,9 @@ export default function TransactionList({ transactions, categories, onRefresh }:
     toast.info('Đã hoàn tác bộ lọc');
   };
 
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; note?: string; date: string; place?: string } | null>(null);
+  const [activeMenuTxId, setActiveMenuTxId] = useState<string | null>(null);
+
   return (
     <div className="space-y-6">
       {/* Filters Toolbar */}
@@ -131,19 +135,19 @@ export default function TransactionList({ transactions, categories, onRefresh }:
             <div className="flex rounded-lg overflow-hidden border border-[#1E293B] bg-[#0B0E14]">
               <button 
                 onClick={() => { setFilterType('all'); setCurrentPage(1); }}
-                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${filterType === 'all' ? 'bg-[#1E293B] text-white' : 'text-[#64748B] hover:text-[#E2E8F0]'}`}
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${filterType === 'all' ? 'bg-[#1E293B] text-white' : 'text-[#64748B] hover:text-[#E2E8F0]'}`}
               >
                 {t('tx.all')}
               </button>
               <button 
                 onClick={() => { setFilterType(TransactionType.EXPENSE); setCurrentPage(1); }}
-                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${filterType === TransactionType.EXPENSE ? 'bg-[#1E293B] text-white' : 'text-[#64748B] hover:text-[#E2E8F0]'}`}
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${filterType === TransactionType.EXPENSE ? 'bg-[#1E293B] text-white' : 'text-[#64748B] hover:text-[#E2E8F0]'}`}
               >
                 {t('tx.expenses')}
               </button>
               <button 
                 onClick={() => { setFilterType(TransactionType.INCOME); setCurrentPage(1); }}
-                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${filterType === TransactionType.INCOME ? 'bg-[#1E293B] text-white' : 'text-[#64748B] hover:text-[#E2E8F0]'}`}
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${filterType === TransactionType.INCOME ? 'bg-[#1E293B] text-white' : 'text-[#64748B] hover:text-[#E2E8F0]'}`}
               >
                 {t('tx.income')}
               </button>
@@ -152,7 +156,7 @@ export default function TransactionList({ transactions, categories, onRefresh }:
             <select 
               value={filterCategory}
               onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1); }}
-              className="bg-[#1E0B0E14] bg-[#0b0e14] border border-[#1E293B] text-[#E2E8F0] text-[11px] font-bold uppercase tracking-wider rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-[#6366F1]/50 cursor-pointer h-[34px]"
+              className="bg-[#0b0e14] border border-[#1E293B] text-[#E2E8F0] text-[11px] font-bold uppercase tracking-wider rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-[#6366F1]/50 cursor-pointer h-[34px]"
             >
               <option value="all">{t('tx.allCategories')}</option>
               {categories.map(c => (
@@ -182,7 +186,7 @@ export default function TransactionList({ transactions, categories, onRefresh }:
           </div>
         </div>
 
-        {/* Collapsible Advanced Filters Section (Now Fully Functional as requested!) */}
+        {/* Collapsible Advanced Filters Section */}
         {showAdvanced && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-[#1E293B] animate-fade-in">
             <div className="space-y-1.5">
@@ -191,7 +195,7 @@ export default function TransactionList({ transactions, categories, onRefresh }:
                 value={searchInNote}
                 onChange={(e) => { setSearchInNote(e.target.value); setCurrentPage(1); }}
                 placeholder={t('tx.searchPlaceholder')}
-                className="bg-[#0B0E14] border-[#1E293B] h-8 text-xs"
+                className="bg-[#0B0E14] border-[#1E293B] h-8 text-xs text-zinc-100"
               />
             </div>
 
@@ -202,7 +206,7 @@ export default function TransactionList({ transactions, categories, onRefresh }:
                 value={minAmount}
                 onChange={(e) => { setMinAmount(e.target.value); setCurrentPage(1); }}
                 placeholder="Ví dụ: 20000"
-                className="bg-[#0B0E14] border-[#1E293B] h-8 text-xs font-mono"
+                className="bg-[#0B0E14] border-[#1E293B] h-8 text-xs font-mono text-zinc-100"
               />
             </div>
 
@@ -213,14 +217,14 @@ export default function TransactionList({ transactions, categories, onRefresh }:
                 value={maxAmount}
                 onChange={(e) => { setMaxAmount(e.target.value); setCurrentPage(1); }}
                 placeholder="Ví dụ: 1000000"
-                className="bg-[#0B0E14] border-[#1E293B] h-8 text-xs font-mono"
+                className="bg-[#0B0E14] border-[#1E293B] h-8 text-xs font-mono text-zinc-100"
               />
             </div>
 
             <div className="flex flex-col justify-end gap-2">
               <button 
                 onClick={() => { setOnlyWithGPS(!onlyWithGPS); setCurrentPage(1); }}
-                className={`w-full flex items-center justify-center gap-2 h-8 rounded-md text-xs font-bold transition-all border ${
+                className={`w-full flex items-center justify-center gap-2 h-8 rounded-md text-xs font-bold transition-all border cursor-pointer ${
                   onlyWithGPS 
                     ? 'bg-emerald-500/10 border-emerald-500/55 text-emerald-400' 
                     : 'bg-[#0B0E14] border-[#1E293B] text-[#94A3B8] hover:text-[#E2E8F0]'
@@ -231,7 +235,7 @@ export default function TransactionList({ transactions, categories, onRefresh }:
               
               <button 
                 onClick={clearFilters}
-                className="text-center text-[10px] font-bold text-red-400 uppercase tracking-widest hover:text-red-300 py-1 transition-colors"
+                className="text-center text-[10px] font-bold text-red-400 uppercase tracking-widest hover:text-red-300 py-1 transition-colors cursor-pointer"
               >
                 Đặt lại bộ lọc (Reset)
               </button>
@@ -240,74 +244,271 @@ export default function TransactionList({ transactions, categories, onRefresh }:
         )}
       </div>
 
-      {/* Transactions Table */}
-      <div className="bg-[#12161F] border border-[#1E293B] rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto border-b border-[#1E293B]/60">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-[#1E293B] bg-[#1E293B]/30">
-                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.date')}</th>
-                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.category')}</th>
-                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.note')}</th>
-                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.value')}</th>
-                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B] text-right">{t('tx.ops')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1E293B]/50">
-              {paginatedItems.map((tx) => {
-                const category = categories.find(c => c.id === tx.categoryId);
-                const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : null;
-                const displayText = parentCategory ? `${parentCategory.name} › ${category?.name}` : (category?.name || 'Không có');
-                return (
-                  <tr key={tx.id} className="group hover:bg-[#1E293B]/20 transition-all">
-                    <td className="px-6 py-4">
-                      <span className="text-[13px] font-semibold text-[#E2E8F0] font-mono italic">
-                        {tx.date}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className="border-[#1E293B] bg-[#1E293B]/50 text-[#94A3B8] font-bold text-[10px] uppercase tracking-widest px-2 py-0">
-                        {displayText}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 max-w-[250px]">
-                      <div className="min-w-0">
-                        <span className="text-[13px] text-[#94A3B8] truncate block font-medium">
-                          {tx.note || '-'}
+      {/* --- RESPONSIVE TRANSACTIONS RENDERER --- */}
+      <div className="space-y-4">
+        {/* DESKTOP TABLE VIEW (Visible on tablet/PC landscape) */}
+        <div className="hidden md:block bg-[#12161F] border border-[#1E293B] rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto border-b border-[#1E293B]/60">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-[#1E293B] bg-[#1E293B]/30">
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.date')}</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.category')}</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">Ảnh Locket</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.note')}</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B]">{t('tx.value')}</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-extrabold text-[#64748B] text-right">{t('tx.ops')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1E293B]/50">
+                {paginatedItems.map((tx) => {
+                  const category = categories.find(c => c.id === tx.categoryId);
+                  const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : null;
+                  const displayText = parentCategory ? `${parentCategory.name} › ${category?.name}` : (category?.name || 'Không có');
+                  return (
+                    <tr key={tx.id} className="group hover:bg-[#1E293B]/20 transition-all">
+                      <td className="px-6 py-4">
+                        <span className="text-[13px] font-semibold text-[#E2E8F0] font-mono italic">
+                          {tx.date}
                         </span>
-                        {tx.placeName && (
-                          <span className="text-[10px] text-[#64748B] flex items-center gap-1 mt-0.5">
-                            📍 {tx.placeName}
-                          </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className="border-[#1E293B] bg-[#1E293B]/50 text-[#94A3B8] font-bold text-[10px] uppercase tracking-widest px-2 py-0">
+                          {displayText}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        {tx.locketImage ? (
+                          <div 
+                            onClick={() => setPreviewPhoto({ url: tx.locketImage!, note: tx.note, date: tx.date, place: tx.placeName })}
+                            className="relative w-10 h-10 rounded border-2 border-amber-500/40 bg-zinc-900 cursor-zoom-in overflow-hidden transition-scale hover:scale-110 shadow"
+                          >
+                            <img src={tx.locketImage} alt="Locket Mini" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-zinc-600 font-mono">-</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 max-w-[250px]">
+                        <div className="min-w-0">
+                          <span className="text-[13px] text-[#94A3B8] truncate block font-medium">
+                            {tx.note || '-'}
+                          </span>
+                          {tx.placeName && (
+                            <span className="text-[10px] text-[#64748B] flex items-center gap-1 mt-0.5">
+                              📍 {tx.placeName}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-[14px] font-bold italic tracking-tight font-mono ${tx.type === TransactionType.INCOME ? 'text-[#10B981]' : 'text-zinc-300'}`}>
+                          {tx.type === TransactionType.INCOME ? '+' : '-'}{formatVND(tx.amount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuTxId(activeMenuTxId === tx.id ? null : tx.id);
+                          }}
+                          className="p-2 text-[#64748B] hover:text-white hover:bg-[#1E293B]/60 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        
+                        {activeMenuTxId === tx.id && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-10" 
+                              onClick={() => setActiveMenuTxId(null)}
+                            />
+                            <div className="absolute right-6 top-10 w-32 bg-[#12161F] border border-[#1E293B] rounded-lg shadow-2xl py-1.5 z-20 text-left animate-fade-in">
+                              <button
+                                onClick={() => {
+                                  setActiveMenuTxId(null);
+                                  toast.info("Tính năng chỉnh sửa thủ công đang phát triển. Bạn có thể sử dụng Trợ lý AI để sửa!");
+                                }}
+                                className="w-full px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-[#1E293B] flex items-center gap-2 cursor-pointer text-left"
+                              >
+                                ✏️ Sửa
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActiveMenuTxId(null);
+                                  if (window.confirm("Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.")) {
+                                    handleDelete(tx.id);
+                                  }
+                                }}
+                                className="w-full px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer text-left font-semibold border-t border-[#1E293B]/60"
+                              >
+                                <Trash2 className="w-3 h-3" /> Xóa
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* MOBILE & TABLET CARD VIEW (Fluid stacking, completely eradicating horizontal scrollbars) */}
+        <div className="md:hidden space-y-3">
+          {paginatedItems.map((tx) => {
+            const category = categories.find(c => c.id === tx.categoryId);
+            const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : null;
+            const displayText = parentCategory ? `${parentCategory.name} › ${category?.name}` : (category?.name || 'Không có');
+            return (
+              <div key={tx.id} className="bg-[#12161F] border border-[#1E293B] rounded-xl p-4 space-y-3.5 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-[#64748B] font-mono italic block">
+                      {tx.date}
+                    </span>
+                    <Badge variant="outline" className="border-[#1E293B] bg-[#1E293B]/50 text-[#94A3B8] font-extrabold text-[9px] uppercase tracking-widest px-1.5 py-0">
+                      {displayText}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 relative">
+                    <span className={`text-[15px] font-extrabold italic font-mono ${tx.type === TransactionType.INCOME ? 'text-[#10B981]' : 'text-zinc-200'}`}>
+                      {tx.type === TransactionType.INCOME ? '+' : '-'}{formatVND(tx.amount)}
+                    </span>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuTxId(activeMenuTxId === tx.id ? null : tx.id);
+                      }}
+                      className="p-1.5 text-zinc-400 hover:text-white rounded-md bg-zinc-950/40 border border-zinc-850 cursor-pointer"
+                    >
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </button>
+
+                    {activeMenuTxId === tx.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setActiveMenuTxId(null)}
+                        />
+                        <div className="absolute right-0 top-8 w-32 bg-[#12161F] border border-[#1E293B] rounded-lg shadow-2xl py-1.5 z-20 text-left animate-fade-in">
+                          <button
+                            onClick={() => {
+                              setActiveMenuTxId(null);
+                              toast.info("Tính năng chỉnh sửa thủ công đang phát triển. Bạn có thể sử dụng Trợ lý AI để sửa!");
+                            }}
+                            className="w-full px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-[#1E293B] flex items-center gap-2 cursor-pointer text-left"
+                          >
+                            ✏️ Sửa
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveMenuTxId(null);
+                              if (window.confirm("Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.")) {
+                                handleDelete(tx.id);
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer text-left font-semibold border-t border-[#1E293B]/60"
+                          >
+                            <Trash2 className="w-3 h-3" /> Xóa
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 1:1 Polaroid aspect styled exactly like Locket app */}
+                {tx.locketImage && (
+                  <div className="flex justify-center py-1 bg-zinc-950/20 rounded-lg border border-zinc-900/30">
+                    <div 
+                      onClick={() => setPreviewPhoto({ url: tx.locketImage!, note: tx.note, date: tx.date, place: tx.placeName })}
+                      className="w-48 bg-zinc-900 p-2 border border-zinc-800 rounded shadow-xl flex flex-col items-center cursor-zoom-in"
+                    >
+                      <div className="relative w-full aspect-square overflow-hidden bg-black rounded">
+                        <img src={tx.locketImage} alt="Locket moments" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[7px] tracking-widest uppercase font-extrabold px-1 rounded">
+                          Locket 1:1
+                        </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-[14px] font-bold italic tracking-tight font-mono ${tx.type === TransactionType.INCOME ? 'text-[#10B981]' : 'text-zinc-300'}`}>
-                        {tx.type === TransactionType.INCOME ? '+' : '-'}{formatVND(tx.amount)}
+                      <span className="text-[9px] text-[#64748B] font-mono italic mt-1.5 uppercase tracking-wider text-center w-full truncate">
+                        {tx.note || 'Chi tiêu 1:1'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(tx.id)} className="h-8 w-8 text-[#64748B] hover:text-[#F43F5E] hover:bg-[#F43F5E]/10">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-zinc-400 text-xs font-semibold leading-relaxed space-y-1">
+                  {tx.note && <p className="text-zinc-300">{tx.note}</p>}
+                  {tx.placeName && (
+                    <span className="inline-flex items-center gap-1.5 text-[10px] text-[#64748B] bg-zinc-950/20 px-2 py-0.5 rounded border border-zinc-900/40">
+                      📍 {tx.placeName}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {filtered.length === 0 && (
-          <div className="py-24 text-center text-[#475569]">
+          <div className="py-24 text-center text-[#475569] bg-[#12161F] border border-[#1E293B] rounded-xl">
             <SlidersHorizontal className="w-10 h-10 mx-auto mb-4 opacity-5 max-w-full" />
             <p className="text-[11px] uppercase tracking-[0.3em] font-extrabold opacity-40">{t('tx.noEntries')}</p>
           </div>
         )}
       </div>
+
+      {/* --- PREVIEW LOCKET MODAL OVERLAY --- */}
+      {previewPhoto && (
+        <div 
+          onClick={() => setPreviewPhoto(null)}
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in cursor-zoom-out"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[380px] bg-zinc-950 border border-zinc-900 hover:border-amber-500/30 p-4 rounded-3xl shadow-2xl flex flex-col items-center space-y-4"
+          >
+            {/* Closes the preview */}
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-3 right-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white p-1.5 rounded-full transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Central aspect of Polaroid */}
+            <div className="w-full bg-zinc-900 p-2.5 rounded-2xl flex flex-col space-y-3 shadow-lg border border-zinc-800/80">
+              <div className="aspect-square bg-black rounded-lg overflow-hidden relative shadow">
+                <img src={previewPhoto.url} alt="Locket moment full zoom" className="w-full h-full object-cover" />
+                <span className="absolute bottom-2 left-2 bg-black/75 text-amber-400 text-[8px] font-extrabold tracking-widest px-2 py-0.5 rounded-full uppercase">
+                  ⚡ Locket OS 1:1
+                </span>
+              </div>
+              <div className="space-y-1 pb-1">
+                <span className="text-[10px] text-zinc-500 font-mono italic block">
+                  Cơ quan: {previewPhoto.date}
+                </span>
+                {previewPhoto.place && (
+                  <span className="text-[10px] text-[#6366F1] font-bold block">
+                    📍 {previewPhoto.place}
+                  </span>
+                )}
+                <p className="text-zinc-300 font-medium text-xs leading-relaxed">
+                  {previewPhoto.note || "Ảnh chụp lưu niệm dòng tiền"}
+                </p>
+              </div>
+            </div>
+            
+            <p className="text-[10px] tracking-widest text-zinc-600 uppercase font-bold">
+              Chung Chu • MoneyFlow OS Photo
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Pagination control */}
       <div className="flex items-center justify-between px-2">
